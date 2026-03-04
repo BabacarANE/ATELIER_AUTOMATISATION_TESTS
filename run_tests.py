@@ -4,8 +4,18 @@ import time
 import sqlite3
 from datetime import datetime
 
+# ─── CHARGEMENT DU .env (racine du compte) ────────────────
+env_path = "/home/babacaranetest/.env"
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if "=" in line and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                os.environ[k.strip()] = v.strip()
+
 # ─── CONFIG ───────────────────────────────────────────────
-API_KEY   = os.environ.get("API_FOOTBALL_KEY", "VOTRE_CLE_ICI")
+API_KEY   = os.environ.get("API_FOOTBALL_KEY", "")
 BASE_URL  = "https://v3.football.api-sports.io"
 HEADERS   = {"x-apisports-key": API_KEY}
 LEAGUE_ID = 61       # Ligue 1
@@ -150,17 +160,8 @@ def test_api_status():
     assert r.status_code == 200, f"HTTP {r.status_code} inattendu"
     data = r.json()
     assert "response" in data, "Champ 'response' manquant"
-    
-    # Gérer le cas où response est une liste ou un dict
-    response = data["response"]
-    if isinstance(response, list):
-        assert len(response) > 0, "Réponse vide"
-        plan = "inconnu"
-        quota = "?"
-    else:
-        plan  = response.get("subscription", {}).get("plan", "inconnu")
-        quota = response.get("requests", {}).get("limit_day", "?")
-    
+    plan  = data["response"].get("subscription", {}).get("plan", "inconnu")
+    quota = data["response"].get("requests", {}).get("limit_day", "?")
     return f"Plan: {plan} | Quota: {quota} req/jour"
 
 
@@ -184,34 +185,24 @@ def test_ligue1_standings():
 
 
 def test_ligue1_fixtures():
-    # Essai 1 : derniers matchs joués
     r = requests.get(
         f"{BASE_URL}/fixtures",
         headers=HEADERS,
-        params={"league": LEAGUE_ID, "season": SEASON, "last": 10},
+        params={"league": LEAGUE_ID, "season": SEASON, "last": 5},
         timeout=5
     )
     assert r.status_code == 200, f"HTTP {r.status_code}"
     fixtures = r.json().get("response", [])
-
-    # Fallback : prochains matchs si aucun match passé
-    if not fixtures:
-        r = requests.get(
-            f"{BASE_URL}/fixtures",
-            headers=HEADERS,
-            params={"league": LEAGUE_ID, "season": SEASON, "next": 5},
-            timeout=5
-        )
-        assert r.status_code == 200, f"HTTP {r.status_code}"
-        fixtures = r.json().get("response", [])
-
-    assert len(fixtures) > 0, "Aucun match trouvé (ni passé, ni à venir)"
-
+    assert len(fixtures) > 0, "Aucun match retourné"
     for fix in fixtures:
         for field in ["fixture", "teams", "goals", "score"]:
             assert field in fix, f"Champ '{field}' manquant"
+        for side in ["home", "away"]:
+            g = fix["goals"][side]
+            if g is not None:
+                assert isinstance(g, int) and g >= 0, f"Score invalide: {g}"
+    return f"{len(fixtures)} derniers matchs validés ✓"
 
-    return f"{len(fixtures)} matchs validés ✓"
 
 def test_top_scorers():
     r = requests.get(
