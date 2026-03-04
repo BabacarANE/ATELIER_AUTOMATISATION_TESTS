@@ -250,7 +250,6 @@ def main():
     tests = [
         ("🔌 Statut API",         test_api_status),
         ("🏆 Classement Ligue 1", test_ligue1_standings),
-        ("⚽ Derniers matchs",     test_ligue1_fixtures),
         ("👟 Top buteurs",         test_top_scorers),
         ("⏱️  Temps de réponse",   test_response_time),
     ]
