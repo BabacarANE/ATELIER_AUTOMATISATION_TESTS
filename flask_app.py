@@ -1,16 +1,40 @@
-from flask import Flask, render_template_string, render_template, jsonify, request, redirect, url_for, session
-from flask import render_template
-from flask import json
-from urllib.request import urlopen
-from werkzeug.utils import secure_filename
-import sqlite3
+from flask import Flask, render_template, jsonify
+import os
+import sys
 
+# PythonAnywhere cherche une variable "app" dans flask_app.py
 app = Flask(__name__)
 
+# Import des fonctions SQLite depuis run_tests
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from run_tests import load_from_db, init_db
+
+# Initialise la DB au démarrage
+init_db()
+
+# ─── ROUTES ───────────────────────────────────────────────
+
 @app.get("/")
-def consignes():
-     return render_template('consignes.html')
+def dashboard():
+    """Page principale — Dashboard visuel Ligue 1."""
+    metrics = load_from_db()
+    return render_template("dashboard.html", metrics=metrics)
+
+@app.get("/api/metrics")
+def api_metrics():
+    """Endpoint JSON — retourne tout l'historique des tests."""
+    return jsonify(load_from_db())
+
+@app.get("/run-tests")
+def run_tests_now():
+    """Lance les tests en arrière-plan."""
+    import subprocess
+    runner = os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_tests.py")
+    subprocess.Popen([sys.executable, runner])
+    return jsonify({"status": "Tests lancés en arrière-plan !"})
+
+# ──────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # utile en local uniquement
+    # Utile en local uniquement
     app.run(host="0.0.0.0", port=5000, debug=True)
