@@ -27,11 +27,13 @@ def api_metrics():
 
 @app.get("/run-tests")
 def run_tests_now():
-    """Lance les tests en arrière-plan."""
-    import subprocess
-    runner = os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_tests.py")
-    subprocess.Popen([sys.executable, runner])
-    return jsonify({"status": "Tests lancés en arrière-plan !"})
+    """Lance les tests directement (sans subprocess)."""
+    from run_tests import main
+    try:
+        main()
+        return jsonify({"status": "Tests terminés !"})
+    except Exception as e:
+        return jsonify({"status": f"Erreur: {str(e)}"})
 
 # ──────────────────────────────────────────────────────────
 
